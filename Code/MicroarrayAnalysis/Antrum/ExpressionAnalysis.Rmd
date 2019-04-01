@@ -1,0 +1,127 @@
+---
+title: "Microarray Data Rspondin KO in Antrum - DGE Reanalysis with LIMMA"
+author: "Hilmar Berger"
+output: 
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+```{r, echo=FALSE, results='hide', messages=FALSE}
+rm(list=ls())
+suppressMessages(library(limma))
+suppressMessages(library(xlsx))
+suppressMessages(library(pheatmap))
+library(xtable)
+library(reshape2)
+
+load("../../../Data/Processed/Rspo_KO_Antrum_micro_array_preprocessed_data.Rdata")
+```
+
+# Introduction
+
+This is data from a mouse experiment (Rspo wt vs KO) hybridized as dual channel to Agilent 014568 micro array. 
+
+# MDS
+
+```{r, echo=FALSE, fig.width=8, fig.height=8}
+
+################################################################################
+## MDS on normalized data 
+cp = palette(rainbow(11))
+data_inp = t(as.matrix(MA.n))
+
+d <- dist(data_inp) # euclidean distances between the rows
+fit <- cmdscale(d,eig=TRUE, k=2) # k is the number of dim
+
+# plot solution
+x <- fit$points[,1]
+y <- fit$points[,2]
+cc = cp[as.numeric(factor(ed[rownames(data_inp),]$Condition))]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2", main="Metric MDS, all samples", type="n", ylim=c(min(y)-50, max(y)+50), xlim=c(min(x)-50, max(x)+200))
+points(x, y, col=cc)
+#text(x,y,labels=ed[rownames(data_inp),]$sample_ID, col=cp[as.numeric(factor(ed[rownames(data_inp),]$Tissue.Status))])
+text(x,y,labels=ed[rownames(data_inp),]$Short, col=cc[as.numeric(as.factor(ed[rownames(data_inp),]$Condition))], cex=.8, pos=4)
+################################################################################
+```
+
+# DGE
+
+We use separate channel analysis for comparison of KO to WT samples ( Smyth, G.K. and Altman, N.S. (2013).  Separate-channel analysis of two-channel microarrays:recovering inter-spot information.BMC Bioinformatics14, 165).
+
+```{r, echo=FALSE, fig.width=8, fig.height=8, warning=FALSE}
+all_results = list()
+
+# Single Channel analysis - all arrays
+#sel_arrays = rownames(ed)[ed_014850$chip_barcode %in% c("221485074844_1_1","221485074844_1_2")]
+sel_arrays = rownames(ed)
+targets2 = targetsA2C(ed[sel_arrays,])
+u <- unique(make.names(targets2$Target))
+f <- factor(make.names(targets2$Target), levels=u)
+design <- model.matrix(~0+f)
+colnames(design) <- u
+data = MA.n[,sel_arrays]
+corfit <- intraspotCorrelation(data, design)
+fit <- lmscFit(data, design, correlation=corfit$consensus)
+
+##################################
+# NI conditions
+##################################
+cont.matrix <- makeContrasts("ko - wt",levels=design)
+fit2 <- contrasts.fit(fit, cont.matrix)
+fit2 <- eBayes(fit2)
+all_results[["KO_vs_WT"]] = topTable(fit2, adjust="BH",number=nrow(fit2))
+
+
+```
+
+## Volcano plot
+
+
+```{r, volcano, echo=FALSE, fig.width=8, fig.height=8}
+all_target_conditions = names(all_results)
+par(mfrow=c(1,1), mar=c(4,4,4,2))
+
+for (tc in all_target_conditions) {
+  r = all_results[[tc]]
+  plot(r$logFC, -log10(r$adj.P.Val),xlab="log2 Fold Change",ylab="-log10(adj. p-val)", ylim=c(0,max(2,max(-log10(r$adj.P.Val),na.rm=T))))
+  title(main=tc, sub=paste("(",nrow(subset(r, adj.P.Val < 0.05))," signif. DE genes)",sep="") )
+  abline(h=-log10(0.05),col="red")
+  abline(v=c(-1,1))
+}
+```
+
+# Data export 
+
+```{r}
+result_folder = "../../../Results/"
+```
+
+
+All result files are exported to `r result_folder`.
+
+
+```{r, write_tabs, echo=FALSE}
+output_file_prefix = paste(result_folder,"Differential_expression_results_Antrum", sep="/")
+selected_cols = c("ProbeName", "GeneSymbol", "GeneName","EntrezID","logFC","AveExpr","t","P.Value","adj.P.Val" )
+for (tc in all_target_conditions) {
+  write.table(all_results[[tc]][,selected_cols], file=paste(output_file_prefix, tc, ".txt", sep="" ), row.names=F , sep="\t", dec=".", quote=F)
+}
+
+```
+
+```{r}
+output_file = file.path(result_folder, "DGE_Results_Antrum.Rdata")
+save(all_results, ed, file=output_file)
+```
+
+```{r}
+sessionInfo()
+```

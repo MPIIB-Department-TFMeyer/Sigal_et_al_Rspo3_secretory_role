@@ -1,0 +1,168 @@
+---
+title: "Microarray Data Rspondin KO in Antrum - GSEA analysis on DGE results"
+author: "Hilmar Berger"
+output: 
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+```{r, warning=FALSE, message=FALSE}
+rm(list=ls())
+
+library(reshape2)
+library(pheatmap)
+library(ggplot2)
+library(knitr)
+library(scales)
+library(fgsea)
+library(data.table)
+
+source("./fGSEA_plot_functions.R")
+
+result_folder = "../../../Results/"
+```
+
+
+# Overview
+
+We here run GSEA on DGE results from the 44k arrays (Rspo KO vs WT in mouse stomach antrum). For analysis, a preranked analysis using the R package fGSEA is used that should give similar results to preranked analysis in standard GSEA. 
+
+<!-- # MSigDB -->
+
+<!-- Since MSigDB gene sets use human gene symbols to map genes to pathways we will translate mouse symbols to homologous human symbols using HomologeneDB from NCBI (build 68).  -->
+
+
+```{r}
+load(file.path(result_folder, "DGE_Results_Antrum.Rdata"))
+```
+
+
+<!-- ```{r} -->
+<!-- homologene_human_mouse = fread("/data_genome1/References/HomologousGenes/HomoloGene/build68/homologene_9606_10090.txt") -->
+<!-- all_entrez_ids = data.frame(EntrezID=unique(all_results[[1]]$EntrezID)) -->
+<!-- all_symbols = data.frame(GeneSymbol=unique(all_results[[1]]$GeneSymbol)) -->
+<!-- a1 = merge(all_symbols, homologene_human_mouse[,c("entrez_1","symbol_1","symbol_2"), with=F], by.x="GeneSymbol", by.y="symbol_2", all.x=T, sort=F) -->
+
+<!-- mouse_to_human=a1 -->
+<!-- mouse_to_human = subset(mouse_to_human, !is.na(GeneSymbol)) -->
+<!-- rownames(mouse_to_human) = mouse_to_human$GeneSymbol -->
+
+<!-- ``` -->
+
+
+# Gene sets
+
+The results from comparison *KO_vs_WT* are used for ranking genes by t-score
+
+<!-- ## Munoz et al SC signature - human symbols -->
+
+
+<!-- ```{r} -->
+<!-- set.seed(123) -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- known_genes = unique(all_results[[1]]$GeneSymbol) -->
+
+<!-- intestinal_sc_sets = gmtPathways("../../../Data/External/GeneSets/SC_and_CryptCell_Signatures_human.gmt" ) -->
+<!-- all_gene_sets = list() -->
+<!-- all_gene_sets[["Lgr5_SC_Signature_Munoz"]] = intestinal_sc_sets[["Lgr5_SC_Signature_Munoz"]] -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- tmp = all_results[["KO_vs_WT"]] -->
+<!-- tmp2 = merge(tmp, mouse_to_human, by="GeneSymbol") -->
+<!-- tmp2 = subset(tmp2, !is.na(symbol_1)) -->
+<!-- ranks = unlist(tapply(tmp2$t, tmp2$symbol_1, function(x) x[which(abs(x)==max(abs(x)))] )) -->
+<!-- fgseaRes2 <- fgsea(all_gene_sets, ranks, minSize=15, maxSize=500, nperm=5000) -->
+<!-- fgseaRes2$leadingEdge = unlist(lapply(fgseaRes2$leadingEdge, function(x) paste(x, collapse=", ") ) ) -->
+<!-- kable(fgseaRes2) -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- for (g in names(all_gene_sets)) { -->
+<!--   sel_genes = all_gene_sets[[g]] -->
+<!--   p = myPlotEnrichment(sel_genes, ranks) -->
+<!--   rr = fgseaRes2[pathway==g] -->
+<!--   print(p + ggtitle(g, paste("Adj.pval=",prettyNum(rr$padj, digits=2), "ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) ) -->
+<!-- } -->
+<!-- ``` -->
+
+
+The following gene sets are used:
+
+- Munoz et al Small Intestinal Stem Cell Signature (PMID: 22692129, DOI: 10.1038/emboj.2012.166, Supp Table S3 )
+- Barker et al Antral Stem Cell Signature (PMID: 20085740, DOI: 10.1016/j.stem.2009.11.013, Supp Table S1)
+
+```{r}
+known_genes = unique(all_results[[1]]$GeneSymbol)
+
+intestinal_sc_sets = gmtPathways("../../../Data/External/GeneSets/SC_and_CryptCell_Signatures_mouse.gmt" )
+all_gene_sets2 = list()
+all_gene_sets2[["Lgr5_SC_Signature_Munoz"]] = intestinal_sc_sets[["Lgr5_SC_Signature_Munoz"]]
+```
+
+```{r}
+tmp = read.table("../../../Data/External/GeneSets/antral lgr5 signature from barker 2010.txt",sep="\t", header=T)
+all_gene_sets2[["Barker_Antral_SC"]] = tmp$Gene.Name
+```
+
+
+```{r}
+tmp = all_results[["KO_vs_WT"]]
+ranks = unlist(tapply(tmp$t, tmp$GeneSymbol, function(x) x[which(abs(x)==max(abs(x)))] ))
+fgseaRes2 <- fgsea(all_gene_sets2, ranks, minSize=15, maxSize=500, nperm=5000)
+fgseaRes2$leadingEdge = unlist(lapply(fgseaRes2$leadingEdge, function(x) paste(x, collapse=", ") ) )
+kable(fgseaRes2)
+```
+
+```{r}
+for (g in names(all_gene_sets2)) {
+  sel_genes = all_gene_sets2[[g]]
+  p = myPlotEnrichment(sel_genes, ranks)
+  rr = fgseaRes2[pathway==g]
+  print(p + ggtitle(g, paste("Adj.pval=",prettyNum(rr$padj, digits=2), "ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+}
+```
+
+
+```{r}
+tmp = all_results[["KO_vs_WT"]]
+ranks = unlist(tapply(tmp$t, tmp$GeneSymbol, function(x) x[which(abs(x)==max(abs(x)))] ))
+
+output_file = paste(result_folder, "GSEA_Munoz_Antrum_RspoKO_vs_WT.pdf", sep="/")
+pdf(output_file, width = 8, height=5)
+g = "Lgr5_SC_Signature_Munoz"
+sel_genes = all_gene_sets2[[g]]
+p = myPlotEnrichment_pdf(sel_genes, ranks, linewidth = 2)
+rr = fgseaRes2[pathway==g]
+print(p + ggtitle(g, paste("Adj.pval=",prettyNum(rr$padj, digits=2), ", ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+dev.off()
+
+
+output_file = paste(result_folder, "GSEA_Barker_signature_Antrum_RspoKO_vs_WT.pdf", sep="/")
+pdf(output_file, width = 8, height=5)
+g = "Barker_Antral_SC"
+sel_genes = all_gene_sets2[[g]]
+p = myPlotEnrichment_pdf(sel_genes, ranks, linewidth = 2 )  
+rr = fgseaRes2[pathway==g]
+print(p + ggtitle(g, paste("Adj.pval=",prettyNum(rr$padj, digits=2), ", ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+dev.off()
+
+```
+
+
+```{r}
+sessionInfo()
+```

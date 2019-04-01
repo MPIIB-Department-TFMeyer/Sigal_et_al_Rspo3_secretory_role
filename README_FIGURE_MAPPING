@@ -1,0 +1,19 @@
+Data files required for analysis are provided in Data folder and referenced from R scripts in Code/...
+
+Fig 1a and S2:
+- Microarray data was preprocessed according to Code/Antrum/Preprocess_raw_files.Rmd
+- Differential gene expression was calculated according to script Code/Antrum/ExpressionAnalysis.Rmd
+- GSEA was run on DGE results using script Code/Antrum/GSEA_Analaysis.Rmd and GSEA plots were generated using Code/Antrum/GSEA_plots.Rmd
+- Figures are in Results/ [Antrum_KO_vs_WT_Barker_Antral_SC.pdf, Antrum_KO_vs_WT_Lgr5_SC_Signature_Munoz.pdf, 
+                           Antrum_KO_vs_WT_CHANG_CYCLING_GENES.pdf, Antrum_KO_vs_WT_REACTOME_DNA_REPLICATION.pdf]
+
+Fig S1:
+- Microarray data was preprocessed according to Code/Corpus/Preprocess_raw_files.Rmd
+- Differential gene expression was calculated according to script Code/Corpus/ExpressionAnalysis.Rmd
+- GSEA was run on DGE results using script Code/Corpus/GSEA_Analaysis.Rmd and GSEA plots were generated using Code/Corpus/GSEA_plots.Rmd
+- Figures are in Results/ [Corpus_KO_vs_WT_Lgr5_SC_Signature_Munoz.pdf, Corpus_KO_vs_WT_Stange_Troy_signature.pdf]
+
+
+
+
+
